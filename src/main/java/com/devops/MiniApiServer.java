@@ -14,8 +14,9 @@ public final class MiniApiServer {
         int port = 8080;
         HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
 
-        // GET /health -> {"status":"UP"}
+        // GET /health
         server.createContext("/health", exchange -> {
+            addSecurityHeaders(exchange); // <--- AJOUT ICI
             if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
                 sendJson(exchange, 405, "{\"error\":\"Method Not Allowed\"}");
                 return;
@@ -23,26 +24,27 @@ public final class MiniApiServer {
             sendJson(exchange, 200, "{\"status\":\"UP\"}");
         });
 
-        // GET /api/orders -> list of demo orders
+        // GET /api/orders
         server.createContext("/api/orders", exchange -> {
+            addSecurityHeaders(exchange); // <--- AJOUT ICI
             if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
                 sendJson(exchange, 405, "{\"error\":\"Method Not Allowed\"}");
                 return;
             }
 
             String ordersJson = """
-        [
-          { "id": 1, "product": "Laptop", "price": 1200.0 },
-          { "id": 2, "product": "Mouse",  "price": 25.0 }
-        ]
-        """;
-
+                [
+                  { "id": 1, "product": "Laptop", "price": 1200.0 },
+                  { "id": 2, "product": "Mouse",  "price": 25.0 }
+                ]
+                """;
             sendJson(exchange, 200, ordersJson);
         });
 
 
-        // Petite page HTML racine (utile pour ZAP, et pour montrer qu'on a aussi du "web")
+        // Page HTML racine
         server.createContext("/", exchange -> {
+            addSecurityHeaders(exchange); // <--- AJOUT ICI
             if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
                 sendText(exchange, 405, "Method Not Allowed");
                 return;
@@ -64,16 +66,32 @@ public final class MiniApiServer {
         });
 
         server.setExecutor(null);
-
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             System.out.println("Stopping server...");
             server.stop(0);
         }));
-
         server.start();
         System.out.println("Mini API Server started on http://localhost:" + port);
-        // Keep process alive
         Thread.currentThread().join();
+    }
+
+    // --- NOUVELLE MÉTHODE POUR SÉCURISER LES HEADERS ---
+    private static void addSecurityHeaders(HttpExchange exchange) {
+        // Fix [10021] X-Content-Type-Options
+        exchange.getResponseHeaders().set("X-Content-Type-Options", "nosniff");
+        
+        // Fix [10020] Anti-clickjacking
+        exchange.getResponseHeaders().set("X-Frame-Options", "DENY");
+        
+        // Fix [10038] CSP
+        exchange.getResponseHeaders().set("Content-Security-Policy", "default-src 'self'");
+        
+        // Fix [10049] Cache control (On désactive le cache pour l'API)
+        exchange.getResponseHeaders().set("Cache-Control", "no-store, no-cache, must-revalidate");
+        exchange.getResponseHeaders().set("Pragma", "no-cache");
+
+        // Fix [10063] Permissions Policy
+        exchange.getResponseHeaders().set("Permissions-Policy", "interest-cohort=()");
     }
 
     private static void sendJson(HttpExchange exchange, int status, String json) throws IOException {
