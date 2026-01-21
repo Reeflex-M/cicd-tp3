@@ -76,29 +76,25 @@ public final class MiniApiServer {
     }
 
     private static void addSecurityHeaders(HttpExchange exchange) {
-        // 1. Protection basique
+        // Protection standard
         exchange.getResponseHeaders().set("X-Content-Type-Options", "nosniff");
         exchange.getResponseHeaders().set("X-Frame-Options", "DENY");
-
-        // 2. CSP Stricte
         exchange.getResponseHeaders().set("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self'; frame-ancestors 'none'; form-action 'self'");
 
-        // 3. Gestion du Cache (Securisé)
-        // ZAP va mettre un warning "Non-Storable Content", mais pour une API, C'EST BON SIGNE.
-        // On empêche le navigateur de garder des infos confidentielles en cache.
+        // Cache Control (Cela cause le warning "Non-Storable" mais c'est voulu pour la sécurité)
         exchange.getResponseHeaders().set("Cache-Control", "no-cache, no-store, must-revalidate");
         exchange.getResponseHeaders().set("Pragma", "no-cache");
         exchange.getResponseHeaders().set("Expires", "0");
 
-        // 4. Isolation et Fetch Metadata (Pour corriger Sec-Fetch-Dest warning)
+        // Isolation
         exchange.getResponseHeaders().set("Cross-Origin-Opener-Policy", "same-origin");
         exchange.getResponseHeaders().set("Cross-Origin-Embedder-Policy", "require-corp");
         exchange.getResponseHeaders().set("Cross-Origin-Resource-Policy", "same-origin");
-        
-        // Ajout du header Vary pour satisfaire la règle [90005] de ZAP
+
+        // --- LIGNE CRUCIALE POUR LE DERNIER WARNING ---
         exchange.getResponseHeaders().set("Vary", "Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site");
-        
-        // 5. Permissions et HSTS
+        // ---------------------------------------------
+
         exchange.getResponseHeaders().set("Permissions-Policy", "geolocation=(), microphone=(), camera=()");
         exchange.getResponseHeaders().set("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
     }
