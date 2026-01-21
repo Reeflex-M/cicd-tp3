@@ -75,23 +75,32 @@ public final class MiniApiServer {
         Thread.currentThread().join();
     }
 
-    // --- NOUVELLE MÉTHODE POUR SÉCURISER LES HEADERS ---
     private static void addSecurityHeaders(HttpExchange exchange) {
-        // Fix [10021] X-Content-Type-Options
+        // Protection contre le sniffing (MIME types)
         exchange.getResponseHeaders().set("X-Content-Type-Options", "nosniff");
-        
-        // Fix [10020] Anti-clickjacking
-        exchange.getResponseHeaders().set("X-Frame-Options", "DENY");
-        
-        // Fix [10038] CSP
-        exchange.getResponseHeaders().set("Content-Security-Policy", "default-src 'self'");
-        
-        // Fix [10049] Cache control (On désactive le cache pour l'API)
-        exchange.getResponseHeaders().set("Cache-Control", "no-store, no-cache, must-revalidate");
-        exchange.getResponseHeaders().set("Pragma", "no-cache");
 
-        // Fix [10063] Permissions Policy
-        exchange.getResponseHeaders().set("Permissions-Policy", "interest-cohort=()");
+        // Protection contre le Clickjacking
+        exchange.getResponseHeaders().set("X-Frame-Options", "DENY");
+
+        // Content Security Policy (CSP) plus stricte
+        // On définit explicitement script-src et style-src pour satisfaire ZAP
+        exchange.getResponseHeaders().set("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self'; frame-ancestors 'none'; form-action 'self'");
+
+        // Désactivation du cache (pour éviter de stocker des données sensibles API)
+        exchange.getResponseHeaders().set("Cache-Control", "no-cache, no-store, must-revalidate");
+        exchange.getResponseHeaders().set("Pragma", "no-cache");
+        exchange.getResponseHeaders().set("Expires", "0");
+
+        // Protection contre Spectre (Site Isolation)
+        exchange.getResponseHeaders().set("Cross-Origin-Opener-Policy", "same-origin");
+        exchange.getResponseHeaders().set("Cross-Origin-Embedder-Policy", "require-corp");
+        exchange.getResponseHeaders().set("Cross-Origin-Resource-Policy", "same-origin");
+        
+        // Permissions Policy (Désactive caméra, micro, géoloc, etc.)
+        exchange.getResponseHeaders().set("Permissions-Policy", "geolocation=(), microphone=(), camera=()");
+        
+        // Strict Transport Security (HSTS) - Force le HTTPS (ZAP aime bien voir ça même en localhost)
+        exchange.getResponseHeaders().set("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
     }
 
     private static void sendJson(HttpExchange exchange, int status, String json) throws IOException {
