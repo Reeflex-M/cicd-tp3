@@ -109,14 +109,15 @@ jobs:
         with:
           target: 'http://localhost:8080'
           fail_action: false
-          allow_issue_writing: false
+          allow_issue_writing: false  # Empêche l'erreur "Resource not accessible"
           cmd_options: '-a'
 
+      # Étape 9 : Conserver les résultats
       - name: Upload Security Reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: zap-security-report
+          name: zap-security-reports-final # Nom modifié pour éviter les erreurs (pas d'underscore)
           path: |
             report_html.html
             report_json.json

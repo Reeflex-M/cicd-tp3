@@ -76,30 +76,30 @@ public final class MiniApiServer {
     }
 
     private static void addSecurityHeaders(HttpExchange exchange) {
-        // Protection contre le sniffing (MIME types)
+        // 1. Protection basique
         exchange.getResponseHeaders().set("X-Content-Type-Options", "nosniff");
-
-        // Protection contre le Clickjacking
         exchange.getResponseHeaders().set("X-Frame-Options", "DENY");
 
-        // Content Security Policy (CSP) plus stricte
-        // On définit explicitement script-src et style-src pour satisfaire ZAP
+        // 2. CSP Stricte
         exchange.getResponseHeaders().set("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self'; frame-ancestors 'none'; form-action 'self'");
 
-        // Désactivation du cache (pour éviter de stocker des données sensibles API)
+        // 3. Gestion du Cache (Securisé)
+        // ZAP va mettre un warning "Non-Storable Content", mais pour une API, C'EST BON SIGNE.
+        // On empêche le navigateur de garder des infos confidentielles en cache.
         exchange.getResponseHeaders().set("Cache-Control", "no-cache, no-store, must-revalidate");
         exchange.getResponseHeaders().set("Pragma", "no-cache");
         exchange.getResponseHeaders().set("Expires", "0");
 
-        // Protection contre Spectre (Site Isolation)
+        // 4. Isolation et Fetch Metadata (Pour corriger Sec-Fetch-Dest warning)
         exchange.getResponseHeaders().set("Cross-Origin-Opener-Policy", "same-origin");
         exchange.getResponseHeaders().set("Cross-Origin-Embedder-Policy", "require-corp");
         exchange.getResponseHeaders().set("Cross-Origin-Resource-Policy", "same-origin");
         
-        // Permissions Policy (Désactive caméra, micro, géoloc, etc.)
-        exchange.getResponseHeaders().set("Permissions-Policy", "geolocation=(), microphone=(), camera=()");
+        // Ajout du header Vary pour satisfaire la règle [90005] de ZAP
+        exchange.getResponseHeaders().set("Vary", "Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site");
         
-        // Strict Transport Security (HSTS) - Force le HTTPS (ZAP aime bien voir ça même en localhost)
+        // 5. Permissions et HSTS
+        exchange.getResponseHeaders().set("Permissions-Policy", "geolocation=(), microphone=(), camera=()");
         exchange.getResponseHeaders().set("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
     }
 
