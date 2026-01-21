@@ -117,9 +117,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          # C'EST ICI QUE L'ERREUR SE TROUVE ENCORE :
-          # Ne mettez PAS "zap_scan", mettez "zap-reports"
-          name: zap-reports
+          name: zap-security-reports  # <--- METTRE DES TIRETS (pas d'underscore)
           path: |
             report_html.html
             report_json.json
